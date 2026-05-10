@@ -41,7 +41,7 @@ public class MTKChartView: MTKView {
 
         let delta = Double(event.scrollingDeltaX)
         controller.contentOffset.x += delta / (bounds.size.simd.x * controller.scale.x)
-
+        clampContentOffset()
         draw()
     }
 
@@ -68,8 +68,14 @@ public class MTKChartView: MTKView {
 
         controller.scale = newScale
         controller.contentOffset -= offset
+        clampContentOffset()
 
         draw()
+    }
+
+    private func clampContentOffset() {
+        let maxOffsetX = max(0, 1 - 1 / controller.scale.x)
+        controller.contentOffset.x = min(max(controller.contentOffset.x, -maxOffsetX), maxOffsetX)
     }
     #endif
 
