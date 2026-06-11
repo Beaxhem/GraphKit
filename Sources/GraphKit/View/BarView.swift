@@ -202,7 +202,7 @@ extension MTKBarView {
 
         let lineOffset = SIMD2(0, configuration.lineWidth / Float(size.height) / 2)
 
-        for x in stride(from: effectiveStartX, to: effectiveEndX, by: xStep) {
+        for x in stride(from: effectiveStartX, through: effectiveEndX, by: xStep) {
             let i = Int((x.displayToNormalized * Double(data.count)).rounded())
             let barWidth = Float(xStep * proportionalWidth)
             let x = Float(x)
