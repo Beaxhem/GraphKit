@@ -9,6 +9,12 @@ import SwiftUI
 import MetalKit
 import simd
 
+#if canImport(UIKit)
+import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
+
 #if os(macOS)
 public struct BarView: NSViewRepresentable {
 
@@ -33,6 +39,36 @@ public struct BarView: NSViewRepresentable {
     }
 
     public func updateNSView(_ barGraphView: MTKBarView, context: Context) {
+        barGraphView.color = color
+        barGraphView.setData(dataPoints)
+    }
+}
+#endif
+
+#if canImport(UIKit)
+public struct BarView: UIViewRepresentable {
+
+    public typealias Configuration = ChartConfiguration
+
+    let color: Color
+    let device: MTLDevice?
+    let dataPoints: [Double]
+    let configuration: Configuration
+    let controller: ChartController
+
+    public init(color: Color, dataPoints: [Double], configuration: Configuration, controller: ChartController) {
+        self.color = color
+        self.device = MTLCreateSystemDefaultDevice()
+        self.dataPoints = dataPoints
+        self.configuration = configuration
+        self.controller = controller
+    }
+
+    public func makeUIView(context: Context) -> MTKBarView {
+        MTKBarView(configuration: configuration, controller: controller, device: device)
+    }
+
+    public func updateUIView(_ barGraphView: MTKBarView, context: Context) {
         barGraphView.color = color
         barGraphView.setData(dataPoints)
     }

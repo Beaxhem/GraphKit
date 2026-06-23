@@ -8,6 +8,13 @@
 import SwiftUI
 import MetalKit
 
+#if canImport(UIKit)
+import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
+
+#if os(macOS)
 public struct LineView: NSViewRepresentable {
 
     public typealias Configuration = ChartConfiguration
@@ -35,6 +42,37 @@ public struct LineView: NSViewRepresentable {
         nsView.setData(dataPoints)
     }
 }
+#endif
+
+#if canImport(UIKit)
+public struct LineView: UIViewRepresentable {
+
+    public typealias Configuration = ChartConfiguration
+
+    let color: Color
+    let device: MTLDevice?
+    let dataPoints: [Double]
+    let configuration: Configuration
+    let controller: ChartController
+
+    public init(color: Color, dataPoints: [Double], configuration: Configuration, controller: ChartController) {
+        self.color = color
+        self.device = MTLCreateSystemDefaultDevice()
+        self.dataPoints = dataPoints
+        self.configuration = configuration
+        self.controller = controller
+    }
+
+    public func makeUIView(context: Context) -> MTKLineView {
+        MTKLineView(configuration: configuration, controller: controller, device: device)
+    }
+
+    public func updateUIView(_ uiView: MTKLineView, context: Context) {
+        uiView.color = color
+        uiView.setData(dataPoints)
+    }
+}
+#endif
 
 public class MTKLineView: MTKChartView {
 
@@ -148,15 +186,38 @@ extension MTKLineView {
         self.data = data
         controller.reset()
 
+        rerender()
+    }
+
+#if canImport(UIKit)
+    func rerender() {
+        setNeedsDisplay()
+    }
+
+    func dataStep(for dataCount: Int) -> Int? {
+        guard let screen = window?.screen else { return nil }
+        return ensurePointWidth(dataCount: dataCount, for: screen)
+    }
+#endif
+
+#if os(macOS)
+    func rerender() {
         needsDisplay = true
     }
+
+    func dataStep(for dataCount: Int) -> Int? {
+        ensurePointWidth(dataCount: dataCount)
+    }
+#endif
 
     func updateResolution(size: CGSize) {
         guard var data, !data.isEmpty else { return }
 
         let viewport = controller.viewport(for: size, data: &data)
 
-        let dataStep = ensurePointWidth(dataCount: data.count / max(Int(controller.scale.x), 1))
+        guard let dataStep = dataStep(for: data.count / max(Int(controller.scale.x), 1)) else {
+            return
+        }
         let xStep = Double(dataStep) * viewport.pointWidth
 
         let startI = Int(viewport.startX.displayToNormalized * Double(data.count))
@@ -213,11 +274,18 @@ private extension MTKLineView {
 #endif
 
     func updateUniforms(_ size: CGSize) {
+#if os(macOS)
         guard let screen = NSScreen.screens.min(by: { $0.backingScaleFactor < $1.backingScaleFactor }) else {
             return
         }
 
         let lineWidthClip = (configuration.lineWidth / Float(screen.frame.height * screen.backingScaleFactor)) * Float(screen.frame.height / size.height)
+#elseif canImport(UIKit)
+        // The macOS expression above algebraically reduces to
+        // `lineWidth / (scale * viewHeight)`; use the screen's native scale.
+        let scale = Float(window?.screen.nativeScale ?? UIScreen.main.nativeScale)
+        let lineWidthClip = configuration.lineWidth / (scale * Float(size.height))
+#endif
 
         var env = EnvironmentValues()
         env.colorScheme = isDarkMode ? .dark : .light

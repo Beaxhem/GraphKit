@@ -23,6 +23,10 @@ public class MTKChartView: MTKView {
         self.preferredFramesPerSecond = 120
 #if os(macOS)
         self.layer?.isOpaque = false
+#elseif canImport(UIKit)
+        self.isOpaque = false
+        self.layer.isOpaque = false
+        self.backgroundColor = .clear
 #endif
         self.clearColor = .init(red: 0, green: 0, blue: 0, alpha: 0)
         self.isPaused = true
